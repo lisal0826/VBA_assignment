@@ -1,8 +1,8 @@
 # VBA_assignment
-## Homework assignment 2 : https://github.com/lisal0826/VBA_assignment/tree/main
-### All three of the following are uploaded to GitHub: 3 Screenshots of the results;  VBA script file ; README file
+#### Homework assignment 2 : https://github.com/lisal0826/VBA_assignment/tree/main
+#### All three of the following are uploaded to GitHub: 3 Screenshots of the results;  VBA script file ; README file
 
-### I have completed all of the following Requirements:
+#### I have completed all of the following Requirements:
 Retrieval of Data (20 points)
 The script loops through one year of stock data and reads/ stores all of the following values from each row:
 
