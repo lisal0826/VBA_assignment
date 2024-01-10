@@ -1,0 +1,250 @@
+Attribute VB_Name = "Module1"
+Option Explicit
+
+Sub ProcessData()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+
+    ' Specify the worksheet name
+    Dim targetSheetName As String
+    targetSheetName = "2018"
+
+    ' Check if the target sheet exists
+    On Error Resume Next
+    Set ws = Worksheets(targetSheetName)
+    On Error GoTo 0
+
+    If ws Is Nothing Then
+        MsgBox "Worksheet '" & targetSheetName & "' not found.", vbExclamation
+        Exit Sub
+    End If
+
+    Debug.Print "Processing worksheet: " & ws.Name
+
+    ' Call a function to process yearly change and percent change
+    ProcessYearlyChange ws
+
+    ' Call a function to calculate total stock volume
+    AddTotalStockVolume ws
+
+    ' Call a function to find and paste values
+    FindAndPasteValues ws
+
+    ' Populate additional cells
+    PopulateAdditionalCells ws
+
+    Debug.Print "Finished processing worksheet: " & ws.Name
+End Sub
+
+Sub ProcessYearlyChange(ws As Worksheet)
+    Dim lastRow As Long
+    Dim uniqueTickers As Collection
+    Dim ticker As Variant
+    Dim yearlyChange As Double
+    Dim percentChange As Double
+    Dim targetRow As Long
+    Dim i As Long ' Add this line
+
+    ' Initialize a collection to store unique tickers for the current worksheet
+    Set uniqueTickers = New Collection
+
+    ' Find the last row with data in column A
+    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+
+    ' Loop through each row in the current worksheet
+    For i = 2 To lastRow ' Assuming data starts from row 2
+        ' Check if the ticker is already in the collection
+        On Error Resume Next
+        uniqueTickers.Add CStr(ws.Cells(i, 1).Value), CStr(ws.Cells(i, 1).Value)
+        On Error GoTo 0
+    Next i
+
+    ' Loop through the unique tickers and calculate yearly change and percent change
+    For Each ticker In uniqueTickers
+        yearlyChange = 0 ' Reset yearly change for each ticker
+        percentChange = 0 ' Reset percent change for each ticker
+
+        ' Find the corresponding row in the individual worksheet
+        Dim targetRowRange As Range
+        Set targetRowRange = ws.Range("A:A").Find(CStr(ticker))
+
+        ' If the targetRow is found, calculate yearly change and percent change
+        If Not targetRowRange Is Nothing Then
+            ' Find the first and last values for the current ticker
+            Dim firstValue As Double
+            Dim lastValue As Double
+
+            firstValue = GetFirstValue(ws, lastRow, CStr(ticker))
+            lastValue = GetLastValue(ws, lastRow, CStr(ticker))
+
+            ' Update yearly change
+            yearlyChange = yearlyChange + (lastValue - firstValue)
+
+            ' Calculate percent change
+            If lastValue <> 0 Then
+                percentChange = yearlyChange / lastValue * 100
+            Else
+                percentChange = 0 ' Avoid division by zero
+            End If
+
+            ' Add headers if the sheet is empty
+            If ws.Range("I1").Value = "" Then
+                ws.Range("I1").Value = "Ticker"
+                ws.Range("J1").Value = "Yearly Change"
+                ws.Range("K1").Value = "Percent Change"
+            End If
+
+            ' Find the last row in columns I, J, and K
+            Dim lastResultRow As Long
+            lastResultRow = ws.Cells(ws.Rows.Count, "I").End(xlUp).Row
+
+            ' Copy results to the next available row in columns I, J, and K
+            ws.Cells(lastResultRow + 1, "I").Value = CStr(ticker)
+            ws.Cells(lastResultRow + 1, "J").Value = yearlyChange
+
+            ' Format background color in column J
+            If yearlyChange < 0 Then
+                ws.Cells(lastResultRow + 1, "J").Interior.Color = RGB(255, 0, 0) ' Red for negative
+            ElseIf yearlyChange > 0 Then
+                ws.Cells(lastResultRow + 1, "J").Interior.Color = RGB(0, 255, 0) ' Green for positive
+            End If
+
+            ws.Cells(lastResultRow + 1, "K").Value = Format(percentChange, "0.00") & "%"
+        End If
+    Next ticker
+End Sub
+
+Sub AddTotalStockVolume(ws As Worksheet)
+    Dim lastRow As Long
+    Dim uniqueCategories As Collection
+    Dim category As Variant
+    Dim totalStockVolume As Double
+    Dim lastResultRow As Long
+    Dim i As Long ' Add this line
+
+    ' Initialize a collection to store unique categories for the current worksheet
+    Set uniqueCategories = New Collection
+
+    ' Find the last row with data in column A
+    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+
+    ' Loop through each row in the current worksheet
+    For i = 2 To lastRow ' Assuming data starts from row 2
+        ' Check if the category is already in the collection
+        On Error Resume Next
+        uniqueCategories.Add CStr(ws.Cells(i, 1).Value), CStr(ws.Cells(i, 1).Value)
+        On Error GoTo 0
+    Next i
+
+    ' Add header to column L if it's empty
+    If ws.Range("L1").Value = "" Then
+        ws.Range("L1").Value = "Total Stock Volume"
+    End If
+
+    ' Loop through the unique categories and calculate total stock volume
+    For Each category In uniqueCategories
+        totalStockVolume = Application.WorksheetFunction.SumIf(ws.Range("A:A"), CStr(category), ws.Range("G:G"))
+
+        ' Find the last row in column L
+        On Error Resume Next
+        lastResultRow = ws.Cells(ws.Rows.Count, "L").End(xlUp).Row
+        On Error GoTo 0
+
+        ' Set lastResultRow to 1 if the sheet is empty
+        If lastResultRow = 0 Then lastResultRow = 1
+
+        ' Copy results to the next available row in column L
+        ws.Cells(lastResultRow + 1, "L").Value = totalStockVolume
+    Next category
+End Sub
+
+Sub FindAndPasteValues(ws As Worksheet)
+    Dim lastRow As Long
+    Dim maxPercent As Double
+    Dim minPercent As Double
+    Dim maxVolume As Double
+    Dim maxPercentRow As Long
+    Dim minPercentRow As Long
+    Dim maxVolumeRow As Long
+    Dim category As String
+    Dim i As Long ' Add this line
+
+    ' Find the last row with data in column A
+    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+
+    ' Find the largest percentage in column K
+    maxPercent = Application.WorksheetFunction.Max(ws.Range("K2:K" & lastRow))
+    maxPercentRow = WorksheetFunction.Match(maxPercent, ws.Range("K2:K" & lastRow), 0)
+
+    ' Find the corresponding category in column I
+    category = ws.Cells(maxPercentRow + 1, "I").Value
+
+    ' Paste values into cells Q2 and P2
+    ws.Range("Q2").Value = Format(maxPercent, "0.00%")
+    ws.Range("P2").Value = category
+
+    ' Find the smallest percentage in column K
+    minPercent = Application.WorksheetFunction.Min(ws.Range("K2:K" & lastRow))
+    minPercentRow = WorksheetFunction.Match(minPercent, ws.Range("K2:K" & lastRow), 0)
+
+    ' Find the corresponding category in column I
+    category = ws.Cells(minPercentRow + 1, "I").Value
+
+    ' Paste values into cells Q3 and P3
+    ws.Range("Q3").Value = Format(minPercent, "0.00%")
+    ws.Range("P3").Value = category
+
+    ' Find the greatest number in column L
+    maxVolume = Application.WorksheetFunction.Max(ws.Range("L2:L" & lastRow))
+    maxVolumeRow = WorksheetFunction.Match(maxVolume, ws.Range("L2:L" & lastRow), 0)
+
+    ' Find the corresponding category in column I
+    category = ws.Cells(maxVolumeRow + 1, "I").Value
+
+    ' Paste values into cells Q4 and P4
+    ws.Range("Q4").Value = maxVolume
+    ws.Range("P4").Value = category
+End Sub
+
+Function GetFirstValue(ws As Worksheet, lastRow As Long, ByVal ticker As String) As Double
+    Dim i As Long
+    For i = 2 To lastRow
+        If ws.Cells(i, 1).Value = ticker Then
+            GetFirstValue = ws.Cells(i, 3).Value
+            Exit Function
+        End If
+    Next i
+End Function
+
+Function GetLastValue(ws As Worksheet, lastRow As Long, ByVal ticker As String) As Double
+    Dim i As Long
+    For i = lastRow To 2 Step -1
+        If ws.Cells(i, 1).Value = ticker Then
+            GetLastValue = ws.Cells(i, 6).Value
+            Exit Function
+        End If
+    Next i
+End Function
+
+Sub DeleteSummaryWorksheet()
+    On Error Resume Next
+    Application.DisplayAlerts = False ' Turn off display alerts to avoid confirmation prompt
+    Sheets("Summary").Delete
+    Application.DisplayAlerts = True ' Turn on display alerts
+    On Error GoTo 0
+End Sub
+
+Sub PopulateAdditionalCells(ws As Worksheet)
+    ' Find the last row with data in column A
+    Dim lastRow As Long
+    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+
+    ' Populate O2, O3, O4, P1, and Q1
+    ws.Range("O2").Value = "Greatest % Increase"
+    ws.Range("O3").Value = "Greatest % Decrease"
+    ws.Range("O4").Value = "Greatest Total Volume"
+    ws.Range("P1").Value = "Ticker"
+    ws.Range("Q1").Value = "Value"
+End Sub
+
