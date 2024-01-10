@@ -1,5 +1,5 @@
 # VBA_assignment
-#### Homework assignment 2 : https://github.com/lisal0826/VBA_assignment/tree/main
+#### Homework assignment 2 :https://github.com/lisal0826/VBA_assignment
 #### All three of the following are uploaded to GitHub: 3 Screenshots of the results;  VBA script file ; README file
 
 #### I have completed all of the following Requirements:
